@@ -1703,22 +1703,31 @@ const GLOBAL_CSS = `
       margin: 0;
     }
 
-    /* 타이포는 갤러리보다 아래쪽에서 시작하고 hero 바닥까지 사용합니다. */
+    /* .pf-home-bottom-graphic은 AccordionGallery 내부에 있으므로 모바일에서는 absolute인
+       .pf-gallery-wrap이 positioning context가 됩니다. 따라서 gallery top에서 약 30svh 아래에
+       타이포를 배치해, 프로젝트 strip 바로 다음 영역에서 첫 화면 안에 ARCHIVE가 보이게 합니다. */
     .pf-home-bottom-graphic {
-      top: clamp(470px, 56svh, 560px);
-      bottom: 0;
+      top: clamp(220px, 30svh, 300px);
+      bottom: auto;
+      height: clamp(120px, 24svh, 210px);
       z-index: 1;
+      overflow: visible;
     }
     .pf-home-typography-image {
       width: 100vw;
       height: 100%;
       object-fit: contain;
-      object-position: center bottom;
+      object-position: center top;
     }
-    /* 크기/비율은 desktop과 동일하게 aspect-ratio로 유지되고, 최소 width만 모바일에 맞게 조정합니다 —
-       viewport가 좁다고 세로로 찌그러지지 않고, 대신 horizontal swipe로 넘겨봅니다 */
-    .pf-gallery-item { flex-basis: clamp(84px, 20vw, 110px); scroll-snap-align: start; }
-    .pf-gallery-item.pf-gallery-active { flex-basis: clamp(160px, 42vw, 220px); }
+
+    /* SNS는 이미 Header 오른쪽으로 이동했으므로 하단 graphic layer 안의 옛 SNS는 숨깁니다. */
+    .pf-home-bottom-graphic .pf-home-social { display: none; }
+
+    /* 모바일에서는 모든 카드 크기를 항상 동일하게 유지합니다. tap해도 accordion 확장을 하지 않기 때문에
+       이미지 하단이 들쭉날쭉해지지 않고 하나의 평평한 horizontal strip으로 유지됩니다. */
+    .pf-gallery-item { flex: 0 0 clamp(112px, 31vw, 150px); scroll-snap-align: start; }
+    .pf-gallery-item.pf-gallery-active { flex-basis: clamp(112px, 31vw, 150px); }
+    .pf-gallery-meta { min-height: 98px; margin-bottom: 10px; }
     .pf-gallery-title { font-size: 11px; }
   }
 
@@ -1745,9 +1754,9 @@ function computeHeroRect() {
 // desktop: hover로 flex-basis가 실제로 커지며 주변 컬럼이 자연스럽게 밀려납니다 (transform:scale() 아님).
 // mobile: hover가 없으므로 첫 tap은 확장(선택), 이미 확장된 항목을 한 번 더 tap하면 Project Detail로 이동합니다.
 // 화면에 실제로 그릴 때 몇 벌(copy)의 projects를 이어붙일지 — desktop은 "seamless infinite loop"를
-// 위해 A/B/C 세 벌을 나란히 이어붙이고, mobile은 기존과 동일하게 한 벌(B)만 그립니다.
+// 위해 A/B/C 세 벌을 나란히 이어붙이고, mobile도 자동 슬라이드를 위해 A/B/C 세 벌을 사용합니다.
 const DESKTOP_GALLERY_COPIES = ["A", "B", "C"];
-const MOBILE_GALLERY_COPIES = ["B"];
+const MOBILE_GALLERY_COPIES = ["A", "B", "C"];
 
 function AccordionGallery({ onOpenProject, thumbRefs, phase, hiddenId, homeOpacity, className }) {
   const [activeId, setActiveId] = useState(null);
@@ -1765,6 +1774,9 @@ function AccordionGallery({ onOpenProject, thumbRefs, phase, hiddenId, homeOpaci
   // 사라지고 결과적으로 전혀 움직이지 않는 것처럼 보이는 문제가 있었습니다. 그래서 실제 위치는
   // 이 ref(소수점 유지)에 누적하고, 매 프레임 끝에 한 번만 vp.scrollLeft에 반영합니다.
   const scrollPosRef = useRef(0);
+  // 모바일 자동 슬라이드는 계속 흐르되, 사용자가 손가락으로 직접 넘기는 동안에는 잠깐 멈춥니다.
+  const mobileTouchingRef = useRef(false);
+  const mobileResumeTimerRef = useRef(null);
   // hover된 프로젝트 "인스턴스"의 고유 key(예: "B-03")를 즉시(리렌더 없이) 읽기 위한 ref — 아래 rAF
   // 루프는 React 렌더 사이클 밖에서 매 프레임 돌기 때문에 state보다 ref가 항상 최신값을 즉시
   // 반영합니다. 이 ref는 "이 프로젝트가 잘리지 않게 Gallery를 따라오게 하는" hover-follow 보정의
@@ -1801,18 +1813,8 @@ function AccordionGallery({ onOpenProject, thumbRefs, phase, hiddenId, homeOpaci
     const row = rowRef.current;
     if (!vp || !row) return;
 
-    // IMPORTANT: the component first renders once with isMobile=false, then the resize effect
-    // resolves the real viewport. Desktop initialization can therefore leave a large scrollLeft
-    // behind. When the layout switches to the single-copy mobile gallery, that old scrollLeft
-    // points past the end of the row and the entire gallery looks blank. Always reset mobile to 0.
-    if (isMobile) {
-      vp.scrollLeft = 0;
-      scrollPosRef.current = 0;
-      panVelocityRef.current = 0;
-      panLastTimeRef.current = null;
-      return;
-    }
-
+    // Desktop / mobile 모두 A/B/C 3벌을 사용합니다. 항상 가운데 B 벌에서 시작하면
+    // 자동 슬라이드가 어느 방향으로 움직여도 끝이 보이지 않고 seamless loop가 가능합니다.
     const oneCycleWidth = row.scrollWidth / 3;
     if (oneCycleWidth > 10) {
       vp.scrollLeft = oneCycleWidth;
@@ -1943,6 +1945,73 @@ function AccordionGallery({ onOpenProject, thumbRefs, phase, hiddenId, homeOpaci
     return () => cancelAnimationFrame(raf);
   }, [isMobile, thumbRefs]);
 
+  // ---- Mobile 전용 continuous auto-slide ----
+  // desktop과 동일하게 A/B/C 3벌을 사용해 끊김 없이 자동으로 흐릅니다.
+  // 손가락으로 직접 swipe하는 동안에는 자동 이동을 멈추고, 손을 뗀 뒤 잠깐 후 다시 이어집니다.
+  useEffect(() => {
+    if (!isMobile) return;
+    let raf;
+    let last = null;
+    const LOOP_SECONDS = 42;
+
+    function tick(t) {
+      const vp = viewportRef.current;
+      const row = rowRef.current;
+      if (!vp || !row) {
+        raf = requestAnimationFrame(tick);
+        return;
+      }
+
+      if (last == null) last = t;
+      const dt = Math.min(48, t - last);
+      last = t;
+      const oneCycleWidth = row.scrollWidth / 3;
+
+      if (oneCycleWidth > 10) {
+        // 사용자가 직접 swipe해서 실제 scrollLeft가 달라졌다면 그 위치를 새 기준으로 받아들입니다.
+        if (Math.abs(vp.scrollLeft - scrollPosRef.current) > 2) {
+          scrollPosRef.current = vp.scrollLeft;
+        }
+
+        if (!mobileTouchingRef.current) {
+          const speed = oneCycleWidth / LOOP_SECONDS;
+          scrollPosRef.current += (speed * dt) / 1000;
+        }
+
+        if (scrollPosRef.current > oneCycleWidth * 1.5) {
+          scrollPosRef.current -= oneCycleWidth;
+        } else if (scrollPosRef.current < oneCycleWidth * 0.5) {
+          scrollPosRef.current += oneCycleWidth;
+        }
+        vp.scrollLeft = scrollPosRef.current;
+      }
+
+      raf = requestAnimationFrame(tick);
+    }
+
+    raf = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(raf);
+      if (mobileResumeTimerRef.current) clearTimeout(mobileResumeTimerRef.current);
+    };
+  }, [isMobile]);
+
+  function handleMobileTouchStart() {
+    if (!isMobile) return;
+    mobileTouchingRef.current = true;
+    if (mobileResumeTimerRef.current) clearTimeout(mobileResumeTimerRef.current);
+  }
+
+  function handleMobileTouchEnd() {
+    if (!isMobile) return;
+    if (mobileResumeTimerRef.current) clearTimeout(mobileResumeTimerRef.current);
+    mobileResumeTimerRef.current = setTimeout(() => {
+      const vp = viewportRef.current;
+      if (vp) scrollPosRef.current = vp.scrollLeft;
+      mobileTouchingRef.current = false;
+    }, 650);
+  }
+
   function handleGalleryMouseMove(e) {
     if (!isMobile) mouseXRef.current = e.clientX;
   }
@@ -1956,11 +2025,9 @@ function AccordionGallery({ onOpenProject, thumbRefs, phase, hiddenId, homeOpaci
   // 실제 Project Detail로 이동할 때는 항상 원본 project(p)만 사용하므로 데이터가 중복되지 않습니다.
   function handleItemClick(p, instanceKey, sourceEl) {
     if (isMobile) {
-      if (activeId === instanceKey) {
-        onOpenProject(p, sourceEl);
-      } else {
-        setActiveBoth(instanceKey);
-      }
+      // 모바일에서는 hover 개념이 없으므로 카드 크기를 바꾸지 않습니다.
+      // 울퉁불퉁해지는 accordion 상태 없이, 한 번 탭하면 바로 Detail로 이동합니다.
+      onOpenProject(p, sourceEl);
     } else {
       // Drag로 스크롤하는 기능은 없고 순수 클릭이므로 click과 충돌하지 않습니다 —
       // auto-slide/보정은 모두 scrollLeft를 프로그래밍적으로 움직일 뿐, 클릭 이벤트를 가로채지 않습니다
@@ -1984,6 +2051,9 @@ function AccordionGallery({ onOpenProject, thumbRefs, phase, hiddenId, homeOpaci
         ref={viewportRef}
         onMouseMove={handleGalleryMouseMove}
         onMouseLeave={handleGalleryMouseLeave}
+        onTouchStart={handleMobileTouchStart}
+        onTouchEnd={handleMobileTouchEnd}
+        onTouchCancel={handleMobileTouchEnd}
       >
         <div className="pf-gallery-row" ref={rowRef}>
           {copies.map((copyLabel) =>
