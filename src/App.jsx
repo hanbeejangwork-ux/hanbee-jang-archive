@@ -1662,25 +1662,25 @@ const GLOBAL_CSS = `
     }
 
     /* 모바일: hover가 없으므로 tap으로 확장 — 기본은 낮은 strip, tap한 항목만 아래로 확장됩니다 */
-    /* MOBILE HOME: gallery를 flex 흐름에 맡기지 않고 hero 안의 확정 좌표에 고정합니다.
-       이렇게 하면 iOS Safari의 dynamic viewport / 초기 React render 타이밍과 무관하게
-       프로젝트 스트립이 반드시 첫 화면에 나타납니다. */
+    /* MOBILE HOME — 프로젝트 스트립과 ARCHIVE를 첫 화면의 확정 좌표에 둡니다.
+       모바일에서는 JS scrollLeft 루프 대신 CSS transform 루프를 사용해 iOS Safari에서도
+       스트립이 사라지거나 첫 렌더에서 엉뚱한 scrollLeft로 튀는 현상을 막습니다. */
     .pf-gallery-wrap {
       position: absolute;
       left: 0;
       right: 0;
-      top: clamp(185px, 24svh, 230px);
+      top: clamp(190px, 24svh, 230px);
       width: 100%;
       height: auto;
       padding: 0;
       flex: none;
       z-index: 4;
+      overflow: visible;
       --home-type-width: 100vw;
       --home-type-bottom: 0px;
       --home-type-max-height: none;
     }
 
-    /* 모바일에서는 desktop의 full-bleed breakout(left:50% + translate)을 완전히 해제합니다. */
     .pf-gallery-viewport {
       position: relative;
       left: 0;
@@ -1690,10 +1690,7 @@ const GLOBAL_CSS = `
       padding: 0;
       margin: 0;
       box-sizing: border-box;
-      overflow-x: auto;
-      overflow-y: visible;
-      scroll-snap-type: x proximity;
-      -webkit-overflow-scrolling: touch;
+      overflow: hidden;
     }
 
     .pf-gallery-row {
@@ -1701,21 +1698,38 @@ const GLOBAL_CSS = `
       min-width: max-content;
       width: max-content;
       margin: 0;
+      transform: translate3d(0,0,0);
+      will-change: transform;
+      animation: pf-mobile-gallery-loop 38s linear infinite;
     }
 
-    /* .pf-home-bottom-graphic은 AccordionGallery 내부에 있으므로 모바일에서는 absolute인
-       .pf-gallery-wrap이 positioning context가 됩니다. 따라서 gallery top에서 약 30svh 아래에
-       타이포를 배치해, 프로젝트 strip 바로 다음 영역에서 첫 화면 안에 ARCHIVE가 보이게 합니다. */
+    @keyframes pf-mobile-gallery-loop {
+      from { transform: translate3d(0, 0, 0); }
+      to   { transform: translate3d(-50%, 0, 0); }
+    }
+
+    /* ARCHIVE는 프로젝트 strip 바로 아래에 독립적으로 고정. Gallery row 애니메이션과 무관합니다. */
     .pf-home-bottom-graphic {
-      top: clamp(220px, 30svh, 300px);
+      position: fixed;
+      left: 0;
+      right: 0;
+      top: clamp(485px, 58svh, 545px);
       bottom: auto;
-      height: clamp(120px, 24svh, 210px);
+      width: 100vw;
+      height: clamp(125px, 19svh, 180px);
+      transform: none;
       z-index: 1;
       overflow: visible;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
     }
     .pf-home-typography-image {
+      display: block;
       width: 100vw;
-      height: 100%;
+      max-width: none;
+      height: auto;
+      max-height: 100%;
       object-fit: contain;
       object-position: center top;
     }
@@ -1756,7 +1770,7 @@ function computeHeroRect() {
 // 화면에 실제로 그릴 때 몇 벌(copy)의 projects를 이어붙일지 — desktop은 "seamless infinite loop"를
 // 위해 A/B/C 세 벌을 나란히 이어붙이고, mobile도 자동 슬라이드를 위해 A/B/C 세 벌을 사용합니다.
 const DESKTOP_GALLERY_COPIES = ["A", "B", "C"];
-const MOBILE_GALLERY_COPIES = ["A", "B", "C"];
+const MOBILE_GALLERY_COPIES = ["A", "B"];
 
 function AccordionGallery({ onOpenProject, thumbRefs, phase, hiddenId, homeOpacity, className }) {
   const [activeId, setActiveId] = useState(null);
@@ -1945,72 +1959,12 @@ function AccordionGallery({ onOpenProject, thumbRefs, phase, hiddenId, homeOpaci
     return () => cancelAnimationFrame(raf);
   }, [isMobile, thumbRefs]);
 
-  // ---- Mobile 전용 continuous auto-slide ----
-  // desktop과 동일하게 A/B/C 3벌을 사용해 끊김 없이 자동으로 흐릅니다.
-  // 손가락으로 직접 swipe하는 동안에는 자동 이동을 멈추고, 손을 뗀 뒤 잠깐 후 다시 이어집니다.
-  useEffect(() => {
-    if (!isMobile) return;
-    let raf;
-    let last = null;
-    const LOOP_SECONDS = 42;
+  // 모바일 자동 슬라이드는 CSS @keyframes(pf-mobile-gallery-loop)로 처리합니다.
+  // iOS Safari에서 scrollLeft 기반 rAF 루프가 초기 위치와 충돌해 Gallery가 사라지는 문제를 피하기 위함입니다.
 
-    function tick(t) {
-      const vp = viewportRef.current;
-      const row = rowRef.current;
-      if (!vp || !row) {
-        raf = requestAnimationFrame(tick);
-        return;
-      }
+  function handleMobileTouchStart() {}
 
-      if (last == null) last = t;
-      const dt = Math.min(48, t - last);
-      last = t;
-      const oneCycleWidth = row.scrollWidth / 3;
-
-      if (oneCycleWidth > 10) {
-        // 사용자가 직접 swipe해서 실제 scrollLeft가 달라졌다면 그 위치를 새 기준으로 받아들입니다.
-        if (Math.abs(vp.scrollLeft - scrollPosRef.current) > 2) {
-          scrollPosRef.current = vp.scrollLeft;
-        }
-
-        if (!mobileTouchingRef.current) {
-          const speed = oneCycleWidth / LOOP_SECONDS;
-          scrollPosRef.current += (speed * dt) / 1000;
-        }
-
-        if (scrollPosRef.current > oneCycleWidth * 1.5) {
-          scrollPosRef.current -= oneCycleWidth;
-        } else if (scrollPosRef.current < oneCycleWidth * 0.5) {
-          scrollPosRef.current += oneCycleWidth;
-        }
-        vp.scrollLeft = scrollPosRef.current;
-      }
-
-      raf = requestAnimationFrame(tick);
-    }
-
-    raf = requestAnimationFrame(tick);
-    return () => {
-      cancelAnimationFrame(raf);
-      if (mobileResumeTimerRef.current) clearTimeout(mobileResumeTimerRef.current);
-    };
-  }, [isMobile]);
-
-  function handleMobileTouchStart() {
-    if (!isMobile) return;
-    mobileTouchingRef.current = true;
-    if (mobileResumeTimerRef.current) clearTimeout(mobileResumeTimerRef.current);
-  }
-
-  function handleMobileTouchEnd() {
-    if (!isMobile) return;
-    if (mobileResumeTimerRef.current) clearTimeout(mobileResumeTimerRef.current);
-    mobileResumeTimerRef.current = setTimeout(() => {
-      const vp = viewportRef.current;
-      if (vp) scrollPosRef.current = vp.scrollLeft;
-      mobileTouchingRef.current = false;
-    }, 650);
-  }
+  function handleMobileTouchEnd() {}
 
   function handleGalleryMouseMove(e) {
     if (!isMobile) mouseXRef.current = e.clientX;
