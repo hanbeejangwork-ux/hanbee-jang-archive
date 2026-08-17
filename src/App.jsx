@@ -1656,13 +1656,14 @@ const GLOBAL_CSS = `
 
     /* 모바일에서도 PNG의 실제 비율을 유지한 채 잘리지 않도록 추가 세로 공간을 확보합니다. */
     .pf-hero:not(.pf-hero-works) {
-      height: auto;
-      min-height: calc(100vh + clamp(220px, 38vw, 360px));
+      height: 100svh;
+      min-height: 680px;
+      overflow: hidden;
     }
 
     /* 모바일: hover가 없으므로 tap으로 확장 — 기본은 낮은 strip, tap한 항목만 아래로 확장됩니다 */
     .pf-gallery-wrap {
-      padding-top: clamp(105px, 17vh, 160px);
+      padding-top: clamp(92px, 14svh, 132px);
       /* SNS + Typography PNG가 함께 들어갈 공간을 desktop과 같은 방식으로 넉넉히 확보합니다 */
       padding-bottom: 0;
       /* 모바일에서는 화면 밖으로 잘리거나 찌그러지지 않도록 Typography PNG 폭/높이를 별도로 좁게
@@ -1672,7 +1673,14 @@ const GLOBAL_CSS = `
       --home-type-max-height: none;
     }
     .pf-home-bottom-graphic {
-      top: 58vh;
+      top: 56svh;
+      bottom: 0;
+    }
+    .pf-home-typography-image {
+      width: 100vw;
+      height: 100%;
+      object-fit: contain;
+      object-position: center bottom;
     }
 
     .pf-gallery-viewport {
@@ -1764,10 +1772,22 @@ function AccordionGallery({ onOpenProject, thumbRefs, phase, hiddenId, homeOpaci
   // 오른쪽(C 방향) 어느 쪽으로 흘러도 한동안 진짜 끝(A의 시작/C의 끝)에 닿지 않고 여유가 있습니다.
   // useLayoutEffect로 화면에 처음 그려지기 전에 위치를 잡아 눈에 보이는 점프가 없게 합니다 ----
   useLayoutEffect(() => {
-    if (isMobile) return;
     const vp = viewportRef.current;
     const row = rowRef.current;
     if (!vp || !row) return;
+
+    // IMPORTANT: the component first renders once with isMobile=false, then the resize effect
+    // resolves the real viewport. Desktop initialization can therefore leave a large scrollLeft
+    // behind. When the layout switches to the single-copy mobile gallery, that old scrollLeft
+    // points past the end of the row and the entire gallery looks blank. Always reset mobile to 0.
+    if (isMobile) {
+      vp.scrollLeft = 0;
+      scrollPosRef.current = 0;
+      panVelocityRef.current = 0;
+      panLastTimeRef.current = null;
+      return;
+    }
+
     const oneCycleWidth = row.scrollWidth / 3;
     if (oneCycleWidth > 10) {
       vp.scrollLeft = oneCycleWidth;
