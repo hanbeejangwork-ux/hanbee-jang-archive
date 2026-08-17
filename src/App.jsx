@@ -504,15 +504,14 @@ const GLOBAL_CSS = `
   .pf-hero {
     position: relative;
     width: 100%;
-    /* SELECTED WORKS HOME은 타이포 PNG까지 한 화면 구성 안에 전부 보여야 하므로
-       기존 100vh보다 세로 공간을 더 확보합니다. 타이포는 이 hero의 bottom:0에 고정되어
-       프로젝트 hover/확장과 무관하게 같은 위치를 유지합니다. */
-    height: max(120vh, calc(100vh + 260px));
-    min-height: 980px;
+    /* SELECTED WORKS HOME은 full-width Typography PNG의 실제 세로 높이까지 안전하게 담도록
+       viewport 아래에 반응형 여백을 추가합니다. 34vw는 100vw로 표시되는 가로형 PNG의
+       세로 높이(권장 비율 약 3.3:1~4:1)를 충분히 수용하도록 잡은 값입니다. */
+    height: auto;
+    min-height: calc(100vh + clamp(360px, 34vw, 680px));
     display: flex;
     flex-direction: column;
-    /* 대형 Typography PNG가 Gallery 아래로 크게 내려와도 다음 섹션(ABOUT의 검정 배경) 위로
-       번져 보이지 않도록, hero 영역 경계에서 정확히 잘라냅니다 */
+    /* Typography는 hero bottom에 고정되지만 hero 자체를 충분히 늘려 전체 PNG가 잘리지 않게 합니다. */
     overflow: hidden;
   }
 
@@ -603,6 +602,40 @@ const GLOBAL_CSS = `
     text-decoration: none;
     white-space: nowrap;
   }
+
+  /* 오른쪽 상단: SEND ME A MESSAGE 아래에 SNS를 세로로 붙인 작은 editorial stack */
+  .pf-header-right {
+    justify-self: end;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+  }
+
+  .pf-header-right .pf-header-contact {
+    justify-self: auto;
+  }
+
+  .pf-header-social {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+
+  .pf-header-social a {
+    font-family: inherit;
+    font-size: 9px;
+    font-weight: 500;
+    line-height: 1.15;
+    letter-spacing: 0.02em;
+    color: #000000;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: opacity 0.2s ease;
+  }
+
+  .pf-header-social a:hover { opacity: 0.5; }
 
   /* HOME 왼쪽 하단 Instagram / Behance 링크 — 버튼/pill이 아닌 단순한 텍스트 링크 목록.
      이제 더 이상 페이지 여백(--page-pad-x) 기준의 독립된 fixed 위치가 아니라, 아래 .pf-home-bottom-graphic
@@ -1602,22 +1635,22 @@ const GLOBAL_CSS = `
       row-gap: 10px;
     }
     .pf-logo { grid-area: logo; }
-    .pf-header-contact { grid-area: contact; }
+    .pf-header-right { grid-area: contact; }
     .pf-tab-group { grid-area: tabs; }
 
     /* 좁은 화면에서 텍스트들이 겹치지 않도록 살짝 더 작게 */
     .pf-logo, .pf-tab-link, .pf-tab-sep, .pf-header-contact {
       font-size: 10px;
     }
+    .pf-header-social a { font-size: 8px; }
     .pf-home-social { gap: 4px; }
     .pf-home-bottom-graphic .pf-home-social { margin-bottom: 8px; }
     .pf-home-social-name { font-size: 11px; }
 
-    /* 모바일 HOME도 Typography PNG가 잘리지 않도록 100vh보다 약간 길게 확보하되,
-       desktop처럼 +260px까지 늘리지는 않습니다. */
+    /* 모바일에서도 PNG의 실제 비율을 유지한 채 잘리지 않도록 추가 세로 공간을 확보합니다. */
     .pf-hero:not(.pf-hero-works) {
-      height: max(112vh, calc(100vh + 120px));
-      min-height: 760px;
+      height: auto;
+      min-height: calc(100vh + clamp(220px, 38vw, 360px));
     }
 
     /* 모바일: hover가 없으므로 tap으로 확장 — 기본은 낮은 strip, tap한 항목만 아래로 확장됩니다 */
@@ -1957,21 +1990,6 @@ function AccordionGallery({ onOpenProject, thumbRefs, phase, hiddenId, homeOpaci
           (구 Orbit 시그니처는 HOME에서 더 이상 렌더링하지 않습니다 — siteInfo.signatureImage 데이터는 그대로
            유지되어 있으니 필요하면 다시 배치할 수 있습니다) */}
       <div className="pf-home-bottom-graphic">
-        <div className="pf-home-social">
-          {homeSocialLinks.map((link, i) => (
-            <a
-              key={link.label}
-              className="pf-home-social-item"
-              href={link.url}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <span className="pf-home-social-index">{String(i + 1).padStart(2, "0")}</span>
-              <span className="pf-home-social-name">{link.label}</span>
-            </a>
-          ))}
-        </div>
-
         {siteInfo.homeTypographyImage && (
           <img
             className="pf-home-typography-image"
@@ -2397,21 +2415,29 @@ export default function App() {
 
               {/* ✏️ 오른쪽 "SEND ME A MESSAGE" — 클릭하면 같은 페이지의 Contact 섹션(id="contact")
                   으로 smooth scroll 이동합니다(mailto: 링크 아님) */}
-              <button
-                type="button"
-                className="pf-header-contact"
-                onClick={() => {
-                  document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" });
-                }}
-              >
-                SEND ME A MESSAGE
-              </button>
+              <div className="pf-header-right">
+                <button
+                  type="button"
+                  className="pf-header-contact"
+                  onClick={() => {
+                    document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                >
+                  SEND ME A MESSAGE
+                </button>
+                <div className="pf-header-social">
+                  {siteInfo.instagram && (
+                    <a href={siteInfo.instagram} target="_blank" rel="noreferrer">INSTAGRAM</a>
+                  )}
+                  {siteInfo.behance && (
+                    <a href={siteInfo.behance} target="_blank" rel="noreferrer">BEHANCE</a>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {/* HOME 왼쪽 하단 Instagram / Behance는 AccordionGallery 내부의 .pf-home-bottom-graphic
-                wrapper 안에서 Typography PNG 바로 위쪽에 함께 렌더링됩니다(같이 움직이도록 하나의
-                레이어로 묶기 위함) — workView === "selected"일 때만 보이는 AccordionGallery와
-                생명주기를 함께하므로 여기서 별도로 조건부 렌더링할 필요가 없습니다 */}
+            {/* HOME의 Instagram / Behance 링크는 오른쪽 상단 SEND ME A MESSAGE 바로 아래에 세로로 렌더링됩니다.
+                Typography PNG와는 분리되어 있으므로 PNG 크기/위치가 바뀌어도 SNS 위치는 영향을 받지 않습니다 */}
             {workView === "selected" ? (
               <AccordionGallery
                 className="pf-view-slide-in"
