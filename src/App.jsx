@@ -504,14 +504,11 @@ const GLOBAL_CSS = `
   .pf-hero {
     position: relative;
     width: 100%;
-    /* SELECTED WORKS HOME은 full-width Typography PNG의 실제 세로 높이까지 안전하게 담도록
-       viewport 아래에 반응형 여백을 추가합니다. 34vw는 100vw로 표시되는 가로형 PNG의
-       세로 높이(권장 비율 약 3.3:1~4:1)를 충분히 수용하도록 잡은 값입니다. */
-    height: auto;
-    min-height: calc(100vh + clamp(360px, 34vw, 680px));
+    /* SELECTED WORKS 첫 화면 안에서 프로젝트 스트립 + 대형 Typography를 함께 보이게 유지합니다. */
+    height: 100vh;
+    min-height: 760px;
     display: flex;
     flex-direction: column;
-    /* Typography는 hero bottom에 고정되지만 hero 자체를 충분히 늘려 전체 PNG가 잘리지 않게 합니다. */
     overflow: hidden;
   }
 
@@ -753,11 +750,11 @@ const GLOBAL_CSS = `
     flex-direction: column;
     /* HOME 중간~하단에 위치하도록 상단에 넉넉한 여백을 두되, 이 top 기준점은 hover 여부와 무관하게
        항상 고정됩니다 — 그래야 hover 확장이 위로도 같이 움직이지 않고 순수하게 아래로만 자랍니다 */
-    padding-top: clamp(180px, 27vh, 320px);
+    padding-top: clamp(145px, 21vh, 245px);
     /* 하단 SNS(INSTAGRAM/BEHANCE) + 대형 Typography PNG가 함께 들어갈 공간을 미리 넉넉히 확보합니다.
        이 값이 너무 작으면 PNG가 커질수록 위쪽 project image strip과 겹칠 수 있으므로, 아래
        --home-type-* 값들과 세트로 맞춰 조정하세요(자세한 계산은 .pf-home-bottom-graphic 주석 참고) */
-    padding-bottom: clamp(260px, 34vh, 440px);
+    padding-bottom: 0;
 
     /* ✏️ 대형 Typography PNG(+ 바로 위 SNS) 위치/크기 조정 — 이 값들만 바꾸면 됩니다.
        (이 wrap의 높이는 hover와 무관하게 고정이므로, Typography 위치도 함께 흔들리지 않습니다)
@@ -928,17 +925,23 @@ const GLOBAL_CSS = `
      클릭해도 아무 반응이 없고, 아래 .pf-home-social만 다시 pointer-events:auto로 되살려 실제 SNS
      링크는 항상 클릭 가능합니다 */
   .pf-home-bottom-graphic {
-    /* Because .pf-gallery-wrap is position:static, this absolute layer is positioned
-       against .pf-hero. Its Y position therefore never changes when a gallery item expands. */
+    /* 첫 화면 안에서 프로젝트 스트립 바로 아래부터 viewport bottom까지를 Typography 전용 영역으로 사용합니다.
+       Gallery hover와는 독립된 absolute layer라 프로젝트가 커져도 위치가 내려가지 않습니다. */
     position: absolute;
-    left: var(--home-type-left);
-    bottom: var(--home-type-bottom);
-    transform: translateX(-50%);
-    width: var(--home-type-width);
+    left: 0;
+    right: 0;
+    top: 55vh;
+    bottom: 0;
+    width: 100vw;
     max-width: none;
+    transform: none;
     opacity: var(--home-type-opacity);
     pointer-events: none;
     z-index: 1;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    overflow: hidden;
   }
 
   /* SNS는 wrapper 왼쪽 끝(Typography PNG의 왼쪽 edge)에 맞춰, PNG 바로 위쪽에 아주 작은 간격만
@@ -961,13 +964,14 @@ const GLOBAL_CSS = `
      project image strip과 절대 겹치지 않습니다 */
   .pf-home-typography-image {
     display: block;
-    width: 100vw;
+    width: 100%;
+    height: 100%;
     max-width: none;
-    height: auto;
     max-height: none;
     margin: 0;
     padding: 0;
     object-fit: contain;
+    object-position: center bottom;
     pointer-events: none;
   }
 
@@ -1658,15 +1662,19 @@ const GLOBAL_CSS = `
 
     /* 모바일: hover가 없으므로 tap으로 확장 — 기본은 낮은 strip, tap한 항목만 아래로 확장됩니다 */
     .pf-gallery-wrap {
-      padding-top: clamp(120px, 20vh, 200px);
+      padding-top: clamp(105px, 17vh, 160px);
       /* SNS + Typography PNG가 함께 들어갈 공간을 desktop과 같은 방식으로 넉넉히 확보합니다 */
-      padding-bottom: clamp(200px, 30vh, 320px);
+      padding-bottom: 0;
       /* 모바일에서는 화면 밖으로 잘리거나 찌그러지지 않도록 Typography PNG 폭/높이를 별도로 좁게
          지정하고, 하단 SNS 영역과 겹치지 않도록 bottom 여백도 함께 조정합니다 */
       --home-type-width: 100vw;
       --home-type-bottom: 0px;
       --home-type-max-height: none;
     }
+    .pf-home-bottom-graphic {
+      top: 58vh;
+    }
+
     .pf-gallery-viewport {
       width: 100%;
       padding: 0 16px;
