@@ -1662,33 +1662,58 @@ const GLOBAL_CSS = `
     }
 
     /* 모바일: hover가 없으므로 tap으로 확장 — 기본은 낮은 strip, tap한 항목만 아래로 확장됩니다 */
+    /* MOBILE HOME: gallery를 flex 흐름에 맡기지 않고 hero 안의 확정 좌표에 고정합니다.
+       이렇게 하면 iOS Safari의 dynamic viewport / 초기 React render 타이밍과 무관하게
+       프로젝트 스트립이 반드시 첫 화면에 나타납니다. */
     .pf-gallery-wrap {
-      padding-top: clamp(92px, 14svh, 132px);
-      /* SNS + Typography PNG가 함께 들어갈 공간을 desktop과 같은 방식으로 넉넉히 확보합니다 */
-      padding-bottom: 0;
-      /* 모바일에서는 화면 밖으로 잘리거나 찌그러지지 않도록 Typography PNG 폭/높이를 별도로 좁게
-         지정하고, 하단 SNS 영역과 겹치지 않도록 bottom 여백도 함께 조정합니다 */
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: clamp(185px, 24svh, 230px);
+      width: 100%;
+      height: auto;
+      padding: 0;
+      flex: none;
+      z-index: 4;
       --home-type-width: 100vw;
       --home-type-bottom: 0px;
       --home-type-max-height: none;
     }
+
+    /* 모바일에서는 desktop의 full-bleed breakout(left:50% + translate)을 완전히 해제합니다. */
+    .pf-gallery-viewport {
+      position: relative;
+      left: 0;
+      transform: none;
+      width: 100%;
+      max-width: 100%;
+      padding: 0;
+      margin: 0;
+      box-sizing: border-box;
+      overflow-x: auto;
+      overflow-y: visible;
+      scroll-snap-type: x proximity;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .pf-gallery-row {
+      justify-content: flex-start;
+      min-width: max-content;
+      width: max-content;
+      margin: 0;
+    }
+
+    /* 타이포는 갤러리보다 아래쪽에서 시작하고 hero 바닥까지 사용합니다. */
     .pf-home-bottom-graphic {
-      top: 56svh;
+      top: clamp(470px, 56svh, 560px);
       bottom: 0;
+      z-index: 1;
     }
     .pf-home-typography-image {
       width: 100vw;
       height: 100%;
       object-fit: contain;
       object-position: center bottom;
-    }
-
-    .pf-gallery-viewport {
-      width: 100%;
-      padding: 0 16px;
-      box-sizing: border-box;
-      /* 손가락으로 넘길 때 각 프로젝트가 자연스럽게 딱딱 맞춰지도록 scroll-snap을 사용합니다 */
-      scroll-snap-type: x proximity;
     }
     /* 크기/비율은 desktop과 동일하게 aspect-ratio로 유지되고, 최소 width만 모바일에 맞게 조정합니다 —
        viewport가 좁다고 세로로 찌그러지지 않고, 대신 horizontal swipe로 넘겨봅니다 */
@@ -1726,7 +1751,7 @@ const MOBILE_GALLERY_COPIES = ["B"];
 
 function AccordionGallery({ onOpenProject, thumbRefs, phase, hiddenId, homeOpacity, className }) {
   const [activeId, setActiveId] = useState(null);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 760);
   const viewportRef = useRef(null);
   const rowRef = useRef(null); // 세 벌(A/B/C)이 이어붙여진 실제 row — scrollWidth/3으로 "한 바퀴" 폭을 매 프레임 측정합니다
   // 현재 마우스의 화면 x좌표(Gallery 영역 안에 있을 때만 값이 채워지고, 벗어나면 null) —
