@@ -546,8 +546,9 @@ const GLOBAL_CSS = `
   .pf-header {
     position: absolute;
     top: var(--page-pad-top);
-    left: var(--page-pad-x);
-    right: var(--page-pad-x);
+    /* 좌우 상단 텍스트를 기존보다 살짝 안쪽으로 — 양쪽 동일하게 18px 추가해 가운데 탭 중심은 그대로 유지 */
+    left: calc(var(--page-pad-x) + 18px);
+    right: calc(var(--page-pad-x) + 18px);
     z-index: 20;
     display: grid;
     grid-template-columns: 1fr auto 1fr;
@@ -608,7 +609,8 @@ const GLOBAL_CSS = `
     justify-self: end;
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
+    /* SEND ME A MESSAGE의 왼쪽 edge를 기준으로 SNS도 왼쪽 정렬 */
+    align-items: flex-start;
     gap: 8px;
   }
 
@@ -619,7 +621,8 @@ const GLOBAL_CSS = `
   .pf-header-social {
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
+    align-items: flex-start;
+    text-align: left;
     gap: 4px;
   }
 
