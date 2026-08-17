@@ -24,9 +24,9 @@ const siteInfo = {
 
   // About 섹션 본문(작은 소개 문장) — 줄바꿈은 \n 으로 표시
   aboutBody:
-    "그래픽과 모션을 오가며 작업하는 디자이너입니다.\n" +
-    "브랜드의 아이덴티티를 움직임으로 확장하고,\n" +
-    "정적인 이미지가 시간 속에서 어떻게 의미를 갖는지 탐구합니다.",
+    "삐이.\n" +
+    "삐이이이,\n" +
+    "삐루룽",
 
   // About 하단에 흐르는 Software / Tool marquee 목록 — 필요한 만큼 추가/삭제하세요
   tools: [
@@ -703,7 +703,10 @@ const GLOBAL_CSS = `
      Typography PNG는 Gallery와 별개로 wrap 하단에 고정 배치되어, hover로 아래로 자란 이미지가
      그 위를 자연스럽게 덮는 composition을 만듭니다. */
   .pf-gallery-wrap {
-    position: relative;
+    /* IMPORTANT: keep this wrapper OUT of the positioning context for the bottom graphic.
+       The typography/SNS layer must be anchored to .pf-hero (100vh), not to the gallery's
+       changing content height. This prevents it from dropping down when a project expands. */
+    position: static;
     flex: 1;
     width: 100%;
     display: flex;
@@ -723,10 +726,11 @@ const GLOBAL_CSS = `
        맨 아래(hero bottom)로부터의 작은 여백이고, --home-type-max-height는 PNG가 아무리 세로로 긴
        비율이어도 위 project image strip과 절대 겹치지 않도록 하는 안전장치입니다(비율은 유지된 채
        필요할 때만 폭도 함께 줄어듭니다) */
-    --home-type-width: min(96vw, 1600px);
+    /* Full-bleed typography: use the entire viewport width with no desktop max-width cap. */
+    --home-type-width: 100vw;
     --home-type-left: 50%;
-    --home-type-bottom: clamp(24px, 3.5vh, 44px);
-    --home-type-max-height: clamp(130px, 22vh, 280px);
+    --home-type-bottom: 0px;
+    --home-type-max-height: none;
     --home-type-opacity: 1;
 
     /* ✏️ Gallery 기본 thumbnail 폭 — .pf-gallery-item에서 이 값 하나만 참조합니다. Gallery가 이제
@@ -884,11 +888,14 @@ const GLOBAL_CSS = `
      클릭해도 아무 반응이 없고, 아래 .pf-home-social만 다시 pointer-events:auto로 되살려 실제 SNS
      링크는 항상 클릭 가능합니다 */
   .pf-home-bottom-graphic {
+    /* Because .pf-gallery-wrap is position:static, this absolute layer is positioned
+       against .pf-hero. Its Y position therefore never changes when a gallery item expands. */
     position: absolute;
     left: var(--home-type-left);
     bottom: var(--home-type-bottom);
     transform: translateX(-50%);
     width: var(--home-type-width);
+    max-width: none;
     opacity: var(--home-type-opacity);
     pointer-events: none;
     z-index: 1;
@@ -914,9 +921,12 @@ const GLOBAL_CSS = `
      project image strip과 절대 겹치지 않습니다 */
   .pf-home-typography-image {
     display: block;
-    width: 100%;
+    width: 100vw;
+    max-width: none;
     height: auto;
-    max-height: var(--home-type-max-height);
+    max-height: none;
+    margin: 0;
+    padding: 0;
     object-fit: contain;
     pointer-events: none;
   }
@@ -1606,9 +1616,9 @@ const GLOBAL_CSS = `
       padding-bottom: clamp(200px, 30vh, 320px);
       /* 모바일에서는 화면 밖으로 잘리거나 찌그러지지 않도록 Typography PNG 폭/높이를 별도로 좁게
          지정하고, 하단 SNS 영역과 겹치지 않도록 bottom 여백도 함께 조정합니다 */
-      --home-type-width: min(94vw, 520px);
-      --home-type-bottom: clamp(16px, 3vh, 28px);
-      --home-type-max-height: clamp(90px, 16vh, 180px);
+      --home-type-width: 100vw;
+      --home-type-bottom: 0px;
+      --home-type-max-height: none;
     }
     .pf-gallery-viewport {
       width: 100%;
