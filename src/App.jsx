@@ -504,7 +504,11 @@ const GLOBAL_CSS = `
   .pf-hero {
     position: relative;
     width: 100%;
-    height: 100vh;
+    /* SELECTED WORKS HOME은 타이포 PNG까지 한 화면 구성 안에 전부 보여야 하므로
+       기존 100vh보다 세로 공간을 더 확보합니다. 타이포는 이 hero의 bottom:0에 고정되어
+       프로젝트 hover/확장과 무관하게 같은 위치를 유지합니다. */
+    height: max(120vh, calc(100vh + 260px));
+    min-height: 980px;
     display: flex;
     flex-direction: column;
     /* 대형 Typography PNG가 Gallery 아래로 크게 내려와도 다음 섹션(ABOUT의 검정 배경) 위로
@@ -1608,6 +1612,13 @@ const GLOBAL_CSS = `
     .pf-home-social { gap: 4px; }
     .pf-home-bottom-graphic .pf-home-social { margin-bottom: 8px; }
     .pf-home-social-name { font-size: 11px; }
+
+    /* 모바일 HOME도 Typography PNG가 잘리지 않도록 100vh보다 약간 길게 확보하되,
+       desktop처럼 +260px까지 늘리지는 않습니다. */
+    .pf-hero:not(.pf-hero-works) {
+      height: max(112vh, calc(100vh + 120px));
+      min-height: 760px;
+    }
 
     /* 모바일: hover가 없으므로 tap으로 확장 — 기본은 낮은 strip, tap한 항목만 아래로 확장됩니다 */
     .pf-gallery-wrap {
